@@ -31,10 +31,6 @@ class YcbineoatReader:
         self.id_strs = common_ids
         self.color_files = [os.path.join(self.video_dir, 'rgb', f'{fid}.npy') for fid in self.id_strs]
         self.depth_files = [os.path.join(self.video_dir, 'depth', f'{fid}.npy') for fid in self.id_strs]
-
-        # self.K = np.array([[572.4114, 0., 325.2611],
-        #                    [0., 573.5704, 242.0489],
-        #                    [0., 0., 1.]])
         
         cam_k_file = os.path.join(video_dir, 'cam_K.txt')
         if not os.path.exists(cam_k_file):
