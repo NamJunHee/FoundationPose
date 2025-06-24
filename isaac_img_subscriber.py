@@ -18,7 +18,7 @@ class ImageSaver(Node):
         self.counter = 0
         
         self.K = None
-        self.caminfo_file = 'shared_output/cam_K.txt'
+        self.caminfo_file_name = 'shared_output/cam_K.txt'
 
         self.rgb_dir = 'shared_output/rgb'
         self.depth_dir = 'shared_output/depth'
@@ -52,8 +52,8 @@ class ImageSaver(Node):
     def caminfo_callback(self, msg: CameraInfo):
         if self.K is None:
             self.K = np.array(msg.k, dtype=np.float32).reshape(3, 3)
-            np.savetxt(self.caminfo_file, self.K)
-            self.get_logger().info(f"📸 CameraInfo received and saved to {self.caminfo_file}")
+            np.savetxt(self.caminfo_file_name, self.K)
+            self.get_logger().info(f"📸 CameraInfo received and saved to {self.caminfo_file_name}")
 
     def sync_callback(self, color_msg, depth_msg):
         try:
