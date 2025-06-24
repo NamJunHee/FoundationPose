@@ -1,11 +1,12 @@
 import rclpy
 from rclpy.node import Node
-from sensor_msgs.msg import Image
+from sensor_msgs.msg import Image, CameraInfo
 from cv_bridge import CvBridge
 import cv2
 import numpy as np
 import os
 import glob
+import message_filters
 
 # message_filters를 임포트합니다.
 import message_filters
@@ -15,10 +16,13 @@ class ImageSaver(Node):
         super().__init__('image_saver')
         self.bridge = CvBridge()
         self.counter = 0
+        
+        self.K = None
+        self.caminfo_file = 'shared_output/cam_K.txt'
 
-        # 저장 경로 설정
         self.rgb_dir = 'shared_output/rgb'
         self.depth_dir = 'shared_output/depth'
+        
         os.makedirs(self.rgb_dir, exist_ok=True)
         os.makedirs(self.depth_dir, exist_ok=True)
 
@@ -29,6 +33,8 @@ class ImageSaver(Node):
             depth=10,
             reliability=rclpy.qos.QoSReliabilityPolicy.BEST_EFFORT
         )
+        
+        self.create_subscription(CameraInfo, '/camera_info_rect', self.caminfo_callback, qos)
 
         color_sub = message_filters.Subscriber(self, Image, '/image_rect', qos_profile=qos)
         depth_sub = message_filters.Subscriber(self, Image, '/depth', qos_profile=qos)
@@ -40,18 +46,16 @@ class ImageSaver(Node):
         )
         ts.registerCallback(self.sync_callback)
         
-        self.get_logger().info("Image saver node started, waiting for synchronized messages...")
+        self.get_logger().info("📷 Image saver node started. Waiting for messages...")
 
 
-    def clear_images(self):
-        # .npy 파일도 삭제하도록 수정
-        for f in glob.glob(os.path.join(self.rgb_dir, '*.png')) + glob.glob(os.path.join(self.rgb_dir, '*.npy')):
-            os.remove(f)
-        for f in glob.glob(os.path.join(self.depth_dir, '*.png')) + glob.glob(os.path.join(self.depth_dir, '*.npy')):
-            os.remove(f)
+    def caminfo_callback(self, msg: CameraInfo):
+        if self.K is None:
+            self.K = np.array(msg.k, dtype=np.float32).reshape(3, 3)
+            np.savetxt(self.caminfo_file, self.K)
+            self.get_logger().info(f"📸 CameraInfo received and saved to {self.caminfo_file}")
 
     def sync_callback(self, color_msg, depth_msg):
-
         try:
             color_image = self.bridge.imgmsg_to_cv2(color_msg, desired_encoding='bgr8')
             depth_image = self.bridge.imgmsg_to_cv2(depth_msg, desired_encoding='passthrough') 
@@ -67,6 +71,12 @@ class ImageSaver(Node):
 
         except Exception as e:
             self.get_logger().error(f"Error processing message: {e}")
+            
+    def clear_images(self):
+        for f in glob.glob(os.path.join(self.rgb_dir, '*.png')) + glob.glob(os.path.join(self.rgb_dir, '*.npy')):
+            os.remove(f)
+        for f in glob.glob(os.path.join(self.depth_dir, '*.png')) + glob.glob(os.path.join(self.depth_dir, '*.npy')):
+            os.remove(f)
 
 
 def main(args=None):
